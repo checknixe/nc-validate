@@ -1,11 +1,13 @@
 #! /usr/bin/env python
 """Module for comparing NetCDF files against a NetCDF file template"""
 
-from netCDF4 import Dataset
+import netCDF4
 import os
 import sys
 import argparse
 import traceback
+import numpy as np
+from typing import Union
 
 default_nc_template = os.path.join(os.path.dirname(__file__), 'templates/IOOS_Glider_NetCDF_v2.0.nc')
 
@@ -56,10 +58,10 @@ def validate_ioosdac_nc_file(nc_file, nc_template=default_nc_template):
 
     # Open up the template and file to validate
 
-    nct = Dataset(nc_template)
+    nct = netCDF4.Dataset(nc_template)
 
     try:    
-        nc = Dataset(nc_file)
+        nc = netCDF4.Dataset(nc_file)
     except Exception:
         traceback.print_exc()
         validated = False
@@ -135,6 +137,11 @@ def validate_ioosdac_nc_file(nc_file, nc_template=default_nc_template):
                 sys.stderr.flush()
                 validated = False
 
+        # Check variable contents
+        # todo: add min, max valid values -> read in from config file (python, dict with variable names)?
+        var_cont_valid = check_variable_contents(nc_var)
+        validated = validated and var_cont_valid
+
         nc_var_count = nc_var_count + 1
     
     sys.stdout.write('\n{:s} RESULTS {:s}\n'.format('=' * 39, '=' * 39))
@@ -151,6 +158,82 @@ def validate_ioosdac_nc_file(nc_file, nc_template=default_nc_template):
     sys.stdout.flush()
     
     return validated
+
+
+def check_variable_contents(nc_var:netCDF4._netCDF4.Variable, mini: Union[int,float]=None, maxi: Union[int,float]=None):
+
+    """
+    Check the contents of a netCDF variable for validity based on specified criteria.
+
+    Parameters:
+    ----------
+    nc_var : netCDF4._netCDF4.Variable
+        The netCDF variable object to check. This variable should be compatible
+        with NumPy-style indexing and have attributes such as `long_name` and
+        optionally `missing_value`, `_FillValue`, or `fill_value`.
+    mini : Union[int, float], optional
+        The minimum valid value for the variable. If provided, all values in the
+        variable array must be greater than or equal to this value for the
+        variable to be considered valid.
+    maxi : Union[int, float], optional
+        The maximum valid value for the variable. If provided, all values in the
+        variable array must be less than or equal to this value for the variable
+        to be considered valid.
+
+    Returns:
+    -------
+    valid : bool
+        True if the variable is considered valid based on the following criteria:
+        - The variable array contains more than one unique value, or if it has only
+          one value, that value does not match the defined missing/fill value.
+        - All values in the variable array are within the range defined by `mini`
+          and `maxi` (if these bounds are provided).
+        False otherwise, indicating the variable is invalid based on one or more of
+        the criteria.
+    """
+
+    print(f">>> Checking contents of variable {nc_var.long_name}...")
+
+    valid = True
+
+    v_arr = nc_var[...]
+
+    # Check if contents of a variable are all equal
+    unique = np.unique(v_arr)
+    dv = len(unique)
+    if dv == 1:
+        print(f">>> WARNING! Elements in variable array {nc_var.long_name} equal only one value: {unique[0]}")
+
+        # Check if that corresponds to missing value
+        for fv in ["missing_value", "_FillValue", "fill_value"]:
+
+            try:
+                fill = getattr(nc_var, fv)
+                print(f"{fv}={fill}")
+                if fill == unique[0]:
+                    print(f"...All elements in {nc_var.long_name} correspond to fill value! Variable invalid!")
+                    valid = False
+                    return valid
+                break
+            except AttributeError:
+                pass
+
+    # If minimum valid value is provided, all values in the variable array must be greater than or equal to this value
+    if mini is not None:
+        if len(np.where(v_arr < mini)[0]) == 0:
+            print(f">>> All elements in variable array {nc_var.long_name} are less than minimum: {mini}. Variable invalid!")
+            valid = False
+            return valid
+
+    # If maximum valid value is provided, all values in the variable array must be smaller than or equal to this value
+    if maxi is not None:
+        if len(np.where(v_arr > maxi)[0]) == 0:
+            print(f">>> All elements in variable array {nc_var.long_name} are larger than maximum: {maxi}. Variable invalid!")
+            valid = False
+            return valid
+
+    return valid
+
     
 if __name__ == '__main__':
     
