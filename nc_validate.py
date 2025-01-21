@@ -5,6 +5,7 @@ from netCDF4 import Dataset
 import os
 import sys
 import argparse
+import traceback
 
 default_nc_template = os.path.join(os.path.dirname(__file__), 'templates/IOOS_Glider_NetCDF_v2.0.nc')
 
@@ -22,6 +23,8 @@ def main(args):
             sys.stdout.write('Valid file: {:s}\n'.format(nc_file))
         else:
             sys.stdout.write('INVALID file: {:s}\n'.format(nc_file))
+        sys.stdout.write('{:s}\n'.format('=' * 86))
+
     
     return 0
             
@@ -52,8 +55,16 @@ def validate_ioosdac_nc_file(nc_file, nc_template=default_nc_template):
     (nc_path, nc_name) = os.path.split(nc_file)
 
     # Open up the template and file to validate
+
     nct = Dataset(nc_template)
-    nc = Dataset(nc_file)
+
+    try:    
+        nc = Dataset(nc_file)
+    except Exception:
+        traceback.print_exc()
+        validated = False
+        print(f">>> File could not be read. Will go to next file (if any)")
+        return validated
     
     # 1. Check global attribures
     global_att_count = 0
@@ -101,8 +112,8 @@ def validate_ioosdac_nc_file(nc_file, nc_template=default_nc_template):
         if nc_var.dtype != nct_var.dtype:
             sys.stderr.write('  VariableError: Incorrect datatype for {:s} ({:s}!={:s})\n'.format(
                 var,
-                nc_var.dtype.type,
-                nct_var.dtype.type))
+                str(nc_var.dtype.type),
+                str(nct_var.dtype.type)))
             sys.stderr.flush()
             validated = False
         
