@@ -139,7 +139,7 @@ def validate_ioosdac_nc_file(nc_file, nc_template=default_nc_template):
 
         # Check variable contents
         # todo: add min, max valid values -> read in from config file (python, dict with variable names)?
-        var_cont_valid = check_variable_contents(nc_var)
+        var_cont_valid = check_variable_contents(var, nc_var)
         validated = validated and var_cont_valid
 
         nc_var_count = nc_var_count + 1
@@ -160,7 +160,7 @@ def validate_ioosdac_nc_file(nc_file, nc_template=default_nc_template):
     return validated
 
 
-def check_variable_contents(nc_var:netCDF4._netCDF4.Variable, mini: Union[int,float]=None, maxi: Union[int,float]=None):
+def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable, mini: Union[int,float]=None, maxi: Union[int,float]=None):
 
     """
     Check the contents of a netCDF variable for validity based on specified criteria.
@@ -192,7 +192,7 @@ def check_variable_contents(nc_var:netCDF4._netCDF4.Variable, mini: Union[int,fl
         the criteria.
     """
 
-    print(f">>> Checking contents of variable {nc_var.long_name}...")
+    print(f">>> Checking contents of variable {varname}...")
 
     valid = True
 
@@ -202,7 +202,7 @@ def check_variable_contents(nc_var:netCDF4._netCDF4.Variable, mini: Union[int,fl
     unique = np.unique(v_arr)
     dv = len(unique)
     if dv == 1:
-        print(f">>> WARNING! Elements in variable array {nc_var.long_name} equal only one value: {unique[0]}")
+        print(f">>> WARNING! Elements in variable array {varname} equal only one value: {unique[0]}")
 
         # Check if that corresponds to missing value
         for fv in ["missing_value", "_FillValue", "fill_value"]:
@@ -211,7 +211,7 @@ def check_variable_contents(nc_var:netCDF4._netCDF4.Variable, mini: Union[int,fl
                 fill = getattr(nc_var, fv)
                 print(f"{fv}={fill}")
                 if fill == unique[0]:
-                    print(f"...All elements in {nc_var.long_name} correspond to fill value! Variable invalid!")
+                    print(f"...All elements in {varname} correspond to fill value! Variable invalid!")
                     valid = False
                     return valid
                 break
@@ -221,14 +221,14 @@ def check_variable_contents(nc_var:netCDF4._netCDF4.Variable, mini: Union[int,fl
     # If minimum valid value is provided, all values in the variable array must be greater than or equal to this value
     if mini is not None:
         if len(np.where(v_arr < mini)[0]) == 0:
-            print(f">>> All elements in variable array {nc_var.long_name} are less than minimum: {mini}. Variable invalid!")
+            print(f">>> All elements in variable array {varname} are less than minimum: {mini}. Variable invalid!")
             valid = False
             return valid
 
     # If maximum valid value is provided, all values in the variable array must be smaller than or equal to this value
     if maxi is not None:
         if len(np.where(v_arr > maxi)[0]) == 0:
-            print(f">>> All elements in variable array {nc_var.long_name} are larger than maximum: {maxi}. Variable invalid!")
+            print(f">>> All elements in variable array {varname} are larger than maximum: {maxi}. Variable invalid!")
             valid = False
             return valid
 
