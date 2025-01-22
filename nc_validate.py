@@ -228,14 +228,14 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable, mini
 
     # If minimum valid value is provided, all values in the variable array must be greater than or equal to this value
     if mini is not None:
-        if len(np.where(v_arr < mini)[0]) == 0:
+        if len(np.where(v_arr >= mini)[0]) == 0:
             print(f">>> All elements in variable array {varname} are less than minimum: {mini}. Variable invalid!")
             valid = False
             return valid
 
     # If maximum valid value is provided, all values in the variable array must be smaller than or equal to this value
     if maxi is not None:
-        if len(np.where(v_arr > maxi)[0]) == 0:
+        if len(np.where(v_arr <= maxi)[0]) == 0:
             print(f">>> All elements in variable array {varname} are larger than maximum: {maxi}. Variable invalid!")
             valid = False
             return valid
@@ -256,13 +256,13 @@ def read_bounds(config, vari:str) -> tuple[float, float]:
     '''
 
     # Loop through sections in config file
-    for pattern in config.sections():
+    for section in config.sections():
         # replace braces in order to get regex pattern
-        pattern = pattern.replace('(', '[').replace(')', ']')
+        pattern = section.replace('(', '[').replace(')', ']')
         # Find the section in config file matching the variable name
         if re.fullmatch(pattern, vari):
-            minv = float(config[pattern]["min"])
-            maxv = float(config[pattern]["max"])
+            minv = float(config[section]["min"])
+            maxv = float(config[section]["max"])
             return minv, maxv
 
     # if no matching section is found, use section "general"
