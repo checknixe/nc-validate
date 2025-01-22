@@ -8,19 +8,27 @@ import argparse
 import traceback
 import numpy as np
 from typing import Union
+import re
+import configparser
+
+from numpy.ma.core import masked_invalid, minimum_fill_value
+from pandas.core.ops.invalid import make_invalid_op
 
 default_nc_template = os.path.join(os.path.dirname(__file__), 'templates/IOOS_Glider_NetCDF_v2.0.nc')
 
 def main(args):
     """Validate each specified NetCDF file against a NetCDF template and print
     the results STDOUT.  Errors are printed to STDERR."""
+
+    # Read config file with specifications for valid range of variable values
+    config = load_config(args.config)
     
     if not args.nc_files:
         sys.stderr.write('No NetCDF files specified for validation\n')
         return 1
 
     for nc_file in args.nc_files:
-        validated = validate_ioosdac_nc_file(nc_file, nc_template=args.template)
+        validated = validate_ioosdac_nc_file(nc_file, config, nc_template=args.template)
         if validated:
             sys.stdout.write('Valid file: {:s}\n'.format(nc_file))
         else:
@@ -30,7 +38,7 @@ def main(args):
     
     return 0
             
-def validate_ioosdac_nc_file(nc_file, nc_template=default_nc_template):
+def validate_ioosdac_nc_file(nc_file, config, nc_template=default_nc_template):
     """Validate the NetCDF file against the nc_template NetCDF file.
     
     The specified nc_file is compared against the default_nc_template, which
@@ -138,8 +146,8 @@ def validate_ioosdac_nc_file(nc_file, nc_template=default_nc_template):
                 validated = False
 
         # Check variable contents
-        # todo: add min, max valid values -> read in from config file (python, dict with variable names)?
-        var_cont_valid = check_variable_contents(var, nc_var)
+        mini, maxi = read_bounds(config, var)
+        var_cont_valid = check_variable_contents(var, nc_var, mini, maxi)
         validated = validated and var_cont_valid
 
         nc_var_count = nc_var_count + 1
@@ -234,6 +242,34 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable, mini
 
     return valid
 
+
+def load_config(path:str):
+    config = configparser.ConfigParser()
+    config.read(path)
+    return config
+
+def read_bounds(config, vari:str) -> tuple[float, float]:
+    '''
+    Read in the maximum and minimum valid values of a variable from the config file;
+    use regex pattern matching (curly braces in the config file are replaced with square ones).
+    If the variable can't be found in the config file, use the category "general".
+    '''
+
+    # Loop through sections in config file
+    for pattern in config.sections():
+        # replace braces in order to get regex pattern
+        pattern = pattern.replace('(', '[').replace(')', ']')
+        # Find the section in config file matching the variable name
+        if re.fullmatch(pattern, vari):
+            minv = float(config[pattern]["min"])
+            maxv = float(config[pattern]["max"])
+            return minv, maxv
+
+    # if no matching section is found, use section "general"
+    minv = float(config["general"]["min"])
+    maxv = float(config["general"]["max"])
+    return minv, maxv
+
     
 if __name__ == '__main__':
     
@@ -245,6 +281,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('-t', '--template',
         default=default_nc_template,
         help='Alternate template to validate against (Default={:s}'.format(default_nc_template))
+    arg_parser.add_argument('-c', '--config', default="./settings.cfg", help="Path to config file")
     args = arg_parser.parse_args()
 
     main(args)
