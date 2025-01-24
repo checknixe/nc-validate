@@ -8,7 +8,7 @@ to STDERR.
 
 The comparison is very simple.  The template file is read and then compared to
 the structure of each of the files specified on the command line. 
-In addition, data integrity is checked; i.e., whether variables contain only 
+Optionally, data integrity is checked; i.e., whether variables contain only 
 fill values or values outside the valid range. 
 
 The following items are checked:
@@ -18,7 +18,7 @@ The following items are checked:
 3. Inclusion of proper variables
 4. Datatypes of included variables
 5. Attributes of included variables
-6. Data integrity
+6. Data integrity (optional)
 
 ###Required Non-Core Python modules:###
 
@@ -58,6 +58,10 @@ Then run the script like this:
 
     > nc_validate.py FILE1[, FILE2, ...]
 
+For integrity checks, the "-i" option is used:
+
+    > nc_validate.py FILE1[, FILE2, ...] -i
+
 The valid range for each variable of your netCDF files can be set in a config file, 
 e.g., settings.cfg. 
 Each variable goes into a section of the config file in square brackets like this:
@@ -75,4 +79,4 @@ as sections in the cfg file structure.
 The path to the config file is `./settings.cfg` by default, but may be specified 
 using the `-c` command line argument:
 
-    > nc_validate.py FILE1[, FILE2, ...] -c /path/to/config.cfg
+    > nc_validate.py FILE1[, FILE2, ...] -c /path/to/config.cfg -i

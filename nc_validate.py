@@ -22,13 +22,16 @@ def main(args):
 
     # Read config file with specifications for valid range of variable values
     config = load_config(args.config)
+
+    # Perform integrity check for each variable if "true"
+    integrity_check = args.integrity
     
     if not args.nc_files:
         sys.stderr.write('No NetCDF files specified for validation\n')
         return 1
 
     for nc_file in args.nc_files:
-        validated = validate_ioosdac_nc_file(nc_file, config, nc_template=args.template)
+        validated = validate_ioosdac_nc_file(nc_file, config, integrity_check, nc_template=args.template)
         if validated:
             sys.stdout.write('Valid file: {:s}\n'.format(nc_file))
         else:
@@ -38,12 +41,14 @@ def main(args):
     
     return 0
             
-def validate_ioosdac_nc_file(nc_file, config, nc_template=default_nc_template):
+def validate_ioosdac_nc_file(nc_file, config, integrity_check:bool, nc_template=default_nc_template):
     """Validate the NetCDF file against the nc_template NetCDF file.
     
     The specified nc_file is compared against the default_nc_template, which
     should be a NetCDF file fully conforming to the IOOS National Glider Data
     Assembly Center specification.
+
+    If integrity_check is True, the contents of each variable will be checked.
     """
     
     validated = True
@@ -146,9 +151,10 @@ def validate_ioosdac_nc_file(nc_file, config, nc_template=default_nc_template):
                 validated = False
 
         # Check variable contents
-        mini, maxi = read_bounds(config, var)
-        var_cont_valid = check_variable_contents(var, nc_var, mini, maxi)
-        validated = validated and var_cont_valid
+        if integrity_check:
+            mini, maxi = read_bounds(config, var)
+            var_cont_valid = check_variable_contents(var, nc_var, mini, maxi)
+            validated = validated and var_cont_valid
 
         nc_var_count = nc_var_count + 1
     
@@ -281,6 +287,8 @@ if __name__ == '__main__':
     arg_parser.add_argument('-t', '--template',
         default=default_nc_template,
         help='Alternate template to validate against (Default={:s}'.format(default_nc_template))
+    arg_parser.add_argument('-i', '--integrity', action='store_true',
+                            help="Perform data integrity check for each variable")
     arg_parser.add_argument('-c', '--config', default="./settings.cfg", help="Path to config file")
     args = arg_parser.parse_args()
 
