@@ -249,13 +249,13 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable,
         pct_valid = len_valid/len_var*100 # percentage of valid elements
 
         if len_valid <= min_len_valid:
-            print(f">>> Less than {pct}% of the elements (i.e., {pct_valid}%) of variable array {varname} lie"
+            print(f">>> Less than {pct}% of the elements (i.e., {int(pct_valid)}%) of variable array {varname} lie"
                   f" within valid bounds [{mini}, {maxi}]. Variable invalid!")
             valid = False
             return valid
 
         else:
-            print(f">>> Variable ok! {pct_valid}% within bounds [{mini}, {maxi}].")
+            print(f">>> Variable ok! {int(pct_valid)}% within bounds [{mini}, {maxi}].")
 
     # If only minimum valid value is provided, a certain percentage of values in the variable array must be greater
     # than or equal to this value
@@ -266,13 +266,13 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable,
         pct_valid = len_valid / len_var * 100  # percentage of valid elements
 
         if len_valid <= min_len_valid:
-            print(f">>> Less than {pct}% of the elements (i.e., {pct_valid}%) of variable array {varname} "
+            print(f">>> Less than {pct}% of the elements (i.e., {int(pct_valid)}%) of variable array {varname} "
                   f"are larger than minimum: {mini}. Variable invalid!")
             valid = False
             return valid
 
         else:
-            print(f">>> Variable ok! {pct_valid}% within bounds (>={mini}).")
+            print(f">>> Variable ok! {int(pct_valid)}% within bounds (>={mini}).")
 
     # If only maximum valid value is provided, a certain percentage of values in the variable array must be smaller than
     # or equal to this value
@@ -282,13 +282,13 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable,
         pct_valid = len_valid / len_var * 100  # percentage of valid elements
 
         if len_valid <= min_len_valid:
-            print(f">>> Less than {pct}% of the elements (i.e., {pct_valid}%) of variable array {varname} "
+            print(f">>> Less than {pct}% of the elements (i.e., {int(pct_valid)}%) of variable array {varname} "
                   f"are smaller than maximum: {maxi}. Variable invalid!")
             valid = False
             return valid
 
         else:
-            print(f">>> Variable ok! {pct_valid}% within bounds (<={maxi}).")
+            print(f">>> Variable ok! {int(pct_valid)}% within bounds (<={maxi}).")
 
     return valid
 
