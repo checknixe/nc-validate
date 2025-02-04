@@ -296,6 +296,8 @@ def read_bounds(config, vari:str) -> tuple[float, float, int]:
     The value pct is the minimum percentage of a variable array that needs to be valid.
     '''
 
+    pct = int(config["general"]["pct"])
+
     # Loop through sections in config file
     for section in config.sections():
         # replace braces in order to get regex pattern
@@ -304,12 +306,11 @@ def read_bounds(config, vari:str) -> tuple[float, float, int]:
         if re.fullmatch(pattern, vari):
             minv = float(config[section]["min"])
             maxv = float(config[section]["max"])
-            return minv, maxv
+            return minv, maxv, pct
 
     # if no matching section is found, use section "general"
     minv = float(config["general"]["min"])
     maxv = float(config["general"]["max"])
-    pct = int(config["general"]["pct"])
 
     return minv, maxv, pct
 
