@@ -72,6 +72,9 @@ min = -50
 max = 50
 ```
 
+In a section "general", you can specify the minimum percentage of each variable
+array that needs to lie within the bounds [min, max].
+
 You may summarize different variable names using regular expressions (regex), 
 but use round brackets instead of square ones, since the latter are interpreted 
 as sections in the cfg file structure.

@@ -152,8 +152,8 @@ def validate_ioosdac_nc_file(nc_file, config, integrity_check:bool, nc_template=
 
         # Check variable contents
         if integrity_check:
-            mini, maxi = read_bounds(config, var)
-            var_cont_valid = check_variable_contents(var, nc_var, mini, maxi)
+            mini, maxi, pct = read_bounds(config, var)
+            var_cont_valid = check_variable_contents(var, nc_var, mini=mini, maxi=maxi, pct=pct)
             validated = validated and var_cont_valid
 
         nc_var_count = nc_var_count + 1
@@ -174,7 +174,8 @@ def validate_ioosdac_nc_file(nc_file, config, integrity_check:bool, nc_template=
     return validated
 
 
-def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable, mini: Union[int,float]=None, maxi: Union[int,float]=None):
+def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable,
+                            mini: Union[int,float]=None, maxi: Union[int,float]=None, pct: int=0):
 
     """
     Check the contents of a netCDF variable for validity based on specified criteria.
@@ -186,13 +187,16 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable, mini
         with NumPy-style indexing and have attributes such as `long_name` and
         optionally `missing_value`, `_FillValue`, or `fill_value`.
     mini : Union[int, float], optional
-        The minimum valid value for the variable. If provided, all values in the
-        variable array must be greater than or equal to this value for the
-        variable to be considered valid.
+        The minimum valid value for the variable. If provided, a certain
+        percentage of the values in the variable array must be greater than
+        or equal to this value for the variable to be considered valid.
     maxi : Union[int, float], optional
-        The maximum valid value for the variable. If provided, all values in the
-        variable array must be less than or equal to this value for the variable
-        to be considered valid.
+        The maximum valid value for the variable. If provided, a certain
+        percentage of the values in the variable array must be less than or equal
+        to this value for the variable to be considered valid.
+    pct : int, optional (defaults to 0)
+        The minimum percentage of values inside the interval [mini, maxi] for the
+        variable.
 
     Returns:
     -------
@@ -200,8 +204,8 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable, mini
         True if the variable is considered valid based on the following criteria:
         - The variable array contains more than one unique value, or if it has only
           one value, that value does not match the defined missing/fill value.
-        - All values in the variable array are within the range defined by `mini`
-          and `maxi` (if these bounds are provided).
+        - At least the given percentage of values in the variable array is within the range
+          defined by `mini` and/or `maxi` (if these bounds are provided).
         False otherwise, indicating the variable is invalid based on one or more of
         the criteria.
     """
@@ -232,17 +236,47 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable, mini
             except AttributeError:
                 pass
 
-    # If minimum valid value is provided, all values in the variable array must be greater than or equal to this value
-    if mini is not None:
-        if len(np.where(v_arr >= mini)[0]) == 0:
-            print(f">>> All elements in variable array {varname} are less than minimum: {mini}. Variable invalid!")
+    # minimum number of valid elements in the variable array; percentage of total array length
+    min_len_valid = int(pct/100*len(v_arr))
+
+    # if both upper and lower bound of valid interval are given, percentage applies to the interval.
+    # At least this percentage of the array must lie within the interval.
+    if mini is not None and maxi is not None:
+
+        # number of elements within the valid interval [mini, maxi]
+        len_valid = len(np.where(np.logical_and(v_arr >= mini, v_arr <= maxi))[0])
+        pct_valid = len_valid/len(v_arr)*100 # percentage of valid elements
+
+        if len_valid <= min_len_valid:
+            print(f">>> Less than {pct}% of the elements (i.e., {pct_valid}%) of variable array {varname} lie"
+                  f" within valid bounds [{mini}, {maxi}]. Variable invalid!")
             valid = False
             return valid
 
-    # If maximum valid value is provided, all values in the variable array must be smaller than or equal to this value
-    if maxi is not None:
-        if len(np.where(v_arr <= maxi)[0]) == 0:
-            print(f">>> All elements in variable array {varname} are larger than maximum: {maxi}. Variable invalid!")
+    # If only minimum valid value is provided, a certain percentage of values in the variable array must be greater than or
+    # equal to this value
+    elif mini is not None:
+
+        # number of elements within the valid interval [mini, maxi]
+        len_valid = len(np.where(v_arr >= mini)[0])
+        pct_valid = len_valid / len(v_arr) * 100  # percentage of valid elements
+
+        if len_valid <= min_len_valid:
+            print(f">>> Less than {pct}% of the elements (i.e., {pct_valid}%) of variable array {varname} "
+                  f"are larger than minimum: {mini}. Variable invalid!")
+            valid = False
+            return valid
+
+    # If only maximum valid value is provided, a certain percentage of values in the variable array must be smaller than
+    # or equal to this value
+    elif maxi is not None:
+        # number of elements within the valid interval [mini, maxi]
+        len_valid = len(np.where(v_arr <= maxi)[0])
+        pct_valid = len_valid / len(v_arr) * 100  # percentage of valid elements
+
+        if len_valid <= min_len_valid:
+            print(f">>> Less than {pct}% of the elements (i.e., {pct_valid}%) of variable array {varname} "
+                  f"are smaller than maximum: {maxi}. Variable invalid!")
             valid = False
             return valid
 
@@ -254,11 +288,12 @@ def load_config(path:str):
     config.read(path)
     return config
 
-def read_bounds(config, vari:str) -> tuple[float, float]:
+def read_bounds(config, vari:str) -> tuple[float, float, int]:
     '''
     Read in the maximum and minimum valid values of a variable from the config file;
     use regex pattern matching (curly braces in the config file are replaced with square ones).
     If the variable can't be found in the config file, use the category "general".
+    The value pct is the minimum percentage of a variable array that needs to be valid.
     '''
 
     # Loop through sections in config file
@@ -274,7 +309,9 @@ def read_bounds(config, vari:str) -> tuple[float, float]:
     # if no matching section is found, use section "general"
     minv = float(config["general"]["min"])
     maxv = float(config["general"]["max"])
-    return minv, maxv
+    pct = int(config["general"]["pct"])
+
+    return minv, maxv, pct
 
     
 if __name__ == '__main__':
