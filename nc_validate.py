@@ -236,8 +236,9 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable,
             except AttributeError:
                 pass
 
+    len_var = len(np.ravel(v_arr))
     # minimum number of valid elements in the variable array; percentage of total array length
-    min_len_valid = int(pct/100*len(v_arr))
+    min_len_valid = int(pct/100*len_var)
 
     # if both upper and lower bound of valid interval are given, percentage applies to the interval.
     # At least this percentage of the array must lie within the interval.
@@ -245,7 +246,7 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable,
 
         # number of elements within the valid interval [mini, maxi]
         len_valid = len(np.where(np.logical_and(v_arr >= mini, v_arr <= maxi))[0])
-        pct_valid = len_valid/len(v_arr)*100 # percentage of valid elements
+        pct_valid = len_valid/len_var*100 # percentage of valid elements
 
         if len_valid <= min_len_valid:
             print(f">>> Less than {pct}% of the elements (i.e., {pct_valid}%) of variable array {varname} lie"
@@ -262,7 +263,7 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable,
 
         # number of elements within the valid interval [mini, maxi]
         len_valid = len(np.where(v_arr >= mini)[0])
-        pct_valid = len_valid / len(v_arr) * 100  # percentage of valid elements
+        pct_valid = len_valid / len_var * 100  # percentage of valid elements
 
         if len_valid <= min_len_valid:
             print(f">>> Less than {pct}% of the elements (i.e., {pct_valid}%) of variable array {varname} "
@@ -278,7 +279,7 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable,
     elif maxi is not None:
         # number of elements within the valid interval [mini, maxi]
         len_valid = len(np.where(v_arr <= maxi)[0])
-        pct_valid = len_valid / len(v_arr) * 100  # percentage of valid elements
+        pct_valid = len_valid / len_var * 100  # percentage of valid elements
 
         if len_valid <= min_len_valid:
             print(f">>> Less than {pct}% of the elements (i.e., {pct_valid}%) of variable array {varname} "
