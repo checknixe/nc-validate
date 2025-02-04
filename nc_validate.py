@@ -253,8 +253,11 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable,
             valid = False
             return valid
 
-    # If only minimum valid value is provided, a certain percentage of values in the variable array must be greater than or
-    # equal to this value
+        else:
+            print(f">>> Variable ok! {pct_valid}% within bounds [{mini}, {maxi}].")
+
+    # If only minimum valid value is provided, a certain percentage of values in the variable array must be greater
+    # than or equal to this value
     elif mini is not None:
 
         # number of elements within the valid interval [mini, maxi]
@@ -266,6 +269,9 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable,
                   f"are larger than minimum: {mini}. Variable invalid!")
             valid = False
             return valid
+
+        else:
+            print(f">>> Variable ok! {pct_valid}% within bounds (>={mini}).")
 
     # If only maximum valid value is provided, a certain percentage of values in the variable array must be smaller than
     # or equal to this value
@@ -279,6 +285,9 @@ def check_variable_contents(varname: str, nc_var:netCDF4._netCDF4.Variable,
                   f"are smaller than maximum: {maxi}. Variable invalid!")
             valid = False
             return valid
+
+        else:
+            print(f">>> Variable ok! {pct_valid}% within bounds (<={maxi}).")
 
     return valid
 
